@@ -6,13 +6,16 @@ use std::str;
 
 fn main() -> std::io::Result<()> {
     let server_socket = UdpSocket::bind("0.0.0.0:12345")?;
+    // initializing UDP socket so that all clients can connect with it 
     let mut clients: HashMap<SocketAddr, u32> = HashMap::new();
     let mut buffer = [0; 1024];
 
+    //initializing game state
     let (word_to_guess, attempt) = word();
     let mut game = HangmanGameState::new(word_to_guess, attempt);
 
     loop {
+        //receiving the incoming message and client address
         let (received, client_address) = match server_socket.recv_from(&mut buffer) {
             Ok((received, client_address)) => (received, client_address),
             Err(err) => {
@@ -20,7 +23,8 @@ fn main() -> std::io::Result<()> {
                 continue;
             }
         };
-   
+
+        //storing the client addresses
         if !clients.contains_key(&client_address) {
             clients.insert(client_address, 0);
             let new_user_message = format!(
@@ -42,6 +46,7 @@ fn main() -> std::io::Result<()> {
             }
         };
 
+        //broadcasting the game updates to all the clients
         if let Some(letter) = message {
             update_score(&mut game, letter, &mut clients, client_address);
             for (key, value) in &clients {
@@ -54,6 +59,7 @@ fn main() -> std::io::Result<()> {
             }
         }
 
+        //game over logic broadcasting to all the clients
         if game.is_game_over() {
             let max_value = get_max(&clients);
             let mut count = 0;
